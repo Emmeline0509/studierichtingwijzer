@@ -12,6 +12,7 @@ type SearchParams = {
   geclausuleerd_domein?: string;
   geclausuleerde_finaliteit?: string;
   geclausuleerde_onderwijsvorm?: string;
+  tkr?: string;
 };
 
 type Program = {
@@ -24,6 +25,15 @@ type Program = {
   finaliteit: string;
   onderwijsvorm: string;
   domein: string;
+};
+
+type Resultaat = {
+  status: string;
+  titel: string;
+  reden: string;
+  aandachtspunt: string;
+  volgendeStap: string;
+  datumTekst?: string;
 };
 
 function naam(program?: Program) {
@@ -60,7 +70,7 @@ function datumInfo(overstapmoment?: string, overstapdatum?: string) {
     return {
       titel: "Tijdens het schooljaar, tot en met 15 oktober",
       tekst:
-        "De overstap valt in de vroegste periode van het schooljaar. In veel gevallen zijn overstappen dan eenvoudiger, maar controleer nog de richting, finaliteit en eventuele clausulering.",
+        "De overstap valt in de vroegste periode van het schooljaar. Controleer nog de richting, finaliteit en eventuele clausulering.",
     };
   }
 
@@ -73,7 +83,7 @@ function datumInfo(overstapmoment?: string, overstapdatum?: string) {
     return {
       titel: "Tijdens het schooljaar, van 16 oktober tot en met 15 januari",
       tekst:
-        "De overstap valt in de tweede periode. Hier gelden meestal strengere voorwaarden. Controleer zeker of het om hetzelfde studiedomein gaat of dat een beslissing van de klassenraad nodig is.",
+        "De overstap valt in de tweede periode. Controleer zeker of het om hetzelfde studiedomein gaat of dat een beslissing van de klassenraad nodig is.",
     };
   }
 
@@ -82,6 +92,26 @@ function datumInfo(overstapmoment?: string, overstapdatum?: string) {
     tekst:
       "De overstap valt na 15 januari. Dit is meestal een uitzonderlijke situatie. Manuele controle door directie of leerlingbegeleiding is aangewezen.",
   };
+}
+
+function tkrTekst(tkr?: string) {
+  if (tkr === "niet_nodig") {
+    return "Er werd aangeduid dat een beslissing van de toelatingsklassenraad niet nodig is.";
+  }
+
+  if (tkr === "gunstig") {
+    return "Er werd een gunstige beslissing van de toelatingsklassenraad aangeduid.";
+  }
+
+  if (tkr === "ongunstig") {
+    return "Er werd een ongunstige beslissing van de toelatingsklassenraad aangeduid.";
+  }
+
+  if (tkr === "twijfel") {
+    return "De situatie moet nog besproken worden met de toelatingsklassenraad.";
+  }
+
+  return "Er werd nog geen beslissing van de toelatingsklassenraad aangeduid.";
 }
 
 function bepaalResultaat({
@@ -95,6 +125,7 @@ function bepaalResultaat({
   geclausuleerdDomein,
   geclausuleerdeFinaliteit,
   geclausuleerdeOnderwijsvorm,
+  tkr,
 }: {
   overstapmoment?: string;
   overstapdatum?: string;
@@ -106,45 +137,82 @@ function bepaalResultaat({
   geclausuleerdDomein?: string;
   geclausuleerdeFinaliteit?: string;
   geclausuleerdeOnderwijsvorm?: string;
-}) {
+  tkr?: string;
+}): Resultaat | null {
   const infoDatum = datumInfo(overstapmoment, overstapdatum);
+  const tekstTkr = tkrTekst(tkr);
 
   if (!attest || !gewensteRichting) {
     return null;
   }
 
-  if (overstapmoment === "tijdens_schooljaar" && !overstapdatum) {
+  if (tkr === "ongunstig") {
     return {
-      titel: "Manueel controleren",
-      tekst:
-        "Er werd gekozen voor een overstap tijdens het schooljaar, maar er is nog geen datum ingevuld.",
+      status: "Niet mogelijk",
+      titel: "Niet mogelijk",
+      reden:
+        "Er werd een ongunstige beslissing van de toelatingsklassenraad aangeduid.",
+      aandachtspunt:
+        "Controleer of deze beslissing definitief is en of er nog bijkomende informatie nodig is.",
+      volgendeStap:
+        "Bespreek de communicatie naar leerling en ouders. Controleer ook of er alternatieven binnen of buiten de school zijn.",
       datumTekst: infoDatum?.tekst,
     };
   }
 
-  if (attest === "A") {
+  if (overstapmoment === "tijdens_schooljaar" && !overstapdatum) {
     return {
-      titel: "Voorlopig mogelijk",
-      tekst:
-        "Op basis van een A-attest lijkt deze overstap mogelijk. Controleer nog of er voor deze richting bijkomende toelatingsvoorwaarden gelden.",
+      status: "Manueel controleren",
+      titel: "Manueel controleren",
+      reden:
+        "Er werd gekozen voor een overstap tijdens het schooljaar, maar er is nog geen datum ingevuld.",
+      aandachtspunt:
+        "De datum is belangrijk omdat de voorwaarden verschillen naargelang de periode van het schooljaar.",
+      volgendeStap: "Vul eerst de datum van overstap in.",
       datumTekst: infoDatum?.tekst,
     };
   }
 
   if (attest === "C") {
     return {
+      status: "Niet mogelijk",
       titel: "Niet mogelijk",
-      tekst:
+      reden:
         "Met een C-attest is een gewone overgang naar het volgende leerjaar niet mogelijk.",
+      aandachtspunt:
+        "Controleer of het om een overgang naar een volgend leerjaar gaat of om een andere uitzonderlijke situatie.",
+      volgendeStap:
+        "Bespreek het traject manueel met directie of leerlingbegeleiding.",
+      datumTekst: infoDatum?.tekst,
+    };
+  }
+
+  if (attest === "A") {
+    return {
+      status: "Voorlopig mogelijk",
+      titel: "Voorlopig mogelijk",
+      reden:
+        "Op basis van een A-attest lijkt deze overstap mogelijk.",
+      aandachtspunt:
+        "Controleer nog of er voor deze richting bijkomende toelatingsvoorwaarden gelden. " +
+        tekstTkr,
+      volgendeStap:
+        "Controleer de officiële voorwaarden en bevestig daarna de overstap.",
       datumTekst: infoDatum?.tekst,
     };
   }
 
   if (attest === "B" && clausulering !== "ja") {
     return {
+      status: "Manueel controleren",
       titel: "Manueel controleren",
-      tekst:
-        "Er is een B-attest ingevoerd, maar geen clausulering. Controleer de exacte formulering van het attest voor je een beslissing neemt.",
+      reden:
+        "Er is een B-attest ingevoerd, maar er werd geen clausulering aangeduid.",
+      aandachtspunt:
+        "Bij een B-attest is de exacte formulering van de clausulering belangrijk. " +
+        tekstTkr,
+      volgendeStap:
+        "Controleer het oriënteringsattest en vul de clausulering nauwkeuriger in.",
       datumTekst: infoDatum?.tekst,
     };
   }
@@ -153,26 +221,43 @@ function bepaalResultaat({
     if (clausuleringType === "richting") {
       if (!geclausuleerdeRichting) {
         return {
+          status: "Manueel controleren",
           titel: "Manueel controleren",
-          tekst:
+          reden:
             "Er is een clausulering op studierichting, maar er werd nog geen geclausuleerde richting gekozen.",
+          aandachtspunt:
+            "Zonder concrete geclausuleerde richting kan de app niet vergelijken met de gewenste richting.",
+          volgendeStap:
+            "Kies de geclausuleerde studierichting en controleer opnieuw.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       if (geclausuleerdeRichting.id === gewensteRichting.id) {
         return {
+          status: "Niet mogelijk",
           titel: "Niet mogelijk",
-          tekst:
-            "De gewenste richting is dezelfde als de geclausuleerde studierichting. Deze overstap lijkt dus niet mogelijk.",
+          reden:
+            "De gewenste richting is dezelfde als de geclausuleerde studierichting.",
+          aandachtspunt:
+            "De clausulering lijkt deze overstap rechtstreeks uit te sluiten. " +
+            tekstTkr,
+          volgendeStap:
+            "Controleer de exacte formulering van het attest en bespreek mogelijke alternatieven.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       return {
+        status: "Manueel controleren",
         titel: "Manueel controleren",
-        tekst:
-          "De geclausuleerde studierichting is niet dezelfde als de gewenste richting. Controleer of de clausulering ruimer geformuleerd is of enkel deze richting uitsluit.",
+        reden:
+          "De geclausuleerde studierichting is niet dezelfde als de gewenste richting.",
+        aandachtspunt:
+          "Controleer of de clausulering echt alleen die richting uitsluit, of ruimer geformuleerd is. " +
+          tekstTkr,
+        volgendeStap:
+          "Lees de formulering van het attest na en beslis of een manuele beoordeling nodig is.",
         datumTekst: infoDatum?.tekst,
       };
     }
@@ -180,26 +265,41 @@ function bepaalResultaat({
     if (clausuleringType === "domein") {
       if (!geclausuleerdDomein) {
         return {
+          status: "Manueel controleren",
           titel: "Manueel controleren",
-          tekst:
+          reden:
             "Er is een clausulering op studiedomein, maar er werd nog geen domein gekozen.",
+          aandachtspunt:
+            "Zonder domein kan de app niet vergelijken met het domein van de gewenste richting.",
+          volgendeStap: "Kies het geclausuleerde studiedomein en controleer opnieuw.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       if (gewensteRichting.domein === geclausuleerdDomein) {
         return {
+          status: "Niet mogelijk",
           titel: "Niet mogelijk",
-          tekst:
-            "De gewenste richting valt binnen het geclausuleerde studiedomein. Deze overstap lijkt dus niet mogelijk.",
+          reden:
+            "De gewenste richting valt binnen het geclausuleerde studiedomein.",
+          aandachtspunt:
+            "De clausulering lijkt deze overstap uit te sluiten. " + tekstTkr,
+          volgendeStap:
+            "Controleer de exacte formulering en bekijk mogelijke richtingen buiten dit domein.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       return {
+        status: "Voorlopig mogelijk",
         titel: "Voorlopig mogelijk",
-        tekst:
-          "De gewenste richting valt niet binnen het geclausuleerde studiedomein. Controleer wel nog de exacte formulering van de clausulering.",
+        reden:
+          "De gewenste richting valt niet binnen het geclausuleerde studiedomein.",
+        aandachtspunt:
+          "Controleer wel nog of de clausulering niet ruimer geformuleerd is. " +
+          tekstTkr,
+        volgendeStap:
+          "Controleer de officiële voorwaarden en bevestig daarna de overstap.",
         datumTekst: infoDatum?.tekst,
       };
     }
@@ -207,26 +307,40 @@ function bepaalResultaat({
     if (clausuleringType === "finaliteit") {
       if (!geclausuleerdeFinaliteit) {
         return {
+          status: "Manueel controleren",
           titel: "Manueel controleren",
-          tekst:
+          reden:
             "Er is een clausulering op finaliteit, maar er werd nog geen finaliteit gekozen.",
+          aandachtspunt:
+            "Zonder finaliteit kan de app niet vergelijken met de gewenste richting.",
+          volgendeStap: "Kies de geclausuleerde finaliteit en controleer opnieuw.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       if (gewensteRichting.finaliteit === geclausuleerdeFinaliteit) {
         return {
+          status: "Niet mogelijk",
           titel: "Niet mogelijk",
-          tekst:
-            "De gewenste richting valt binnen de geclausuleerde finaliteit. Deze overstap lijkt dus niet mogelijk.",
+          reden:
+            "De gewenste richting valt binnen de geclausuleerde finaliteit.",
+          aandachtspunt:
+            "De clausulering lijkt deze overstap uit te sluiten. " + tekstTkr,
+          volgendeStap:
+            "Controleer de exacte formulering en bekijk richtingen buiten deze finaliteit.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       return {
+        status: "Voorlopig mogelijk",
         titel: "Voorlopig mogelijk",
-        tekst:
-          "De gewenste richting valt niet binnen de geclausuleerde finaliteit. Controleer nog de exacte formulering van het attest.",
+        reden:
+          "De gewenste richting valt niet binnen de geclausuleerde finaliteit.",
+        aandachtspunt:
+          "Controleer nog de exacte formulering van het attest. " + tekstTkr,
+        volgendeStap:
+          "Controleer de officiële voorwaarden en bevestig daarna de overstap.",
         datumTekst: infoDatum?.tekst,
       };
     }
@@ -234,42 +348,66 @@ function bepaalResultaat({
     if (clausuleringType === "onderwijsvorm") {
       if (!geclausuleerdeOnderwijsvorm) {
         return {
+          status: "Manueel controleren",
           titel: "Manueel controleren",
-          tekst:
+          reden:
             "Er is een clausulering op onderwijsvorm, maar er werd nog geen onderwijsvorm gekozen.",
+          aandachtspunt:
+            "Zonder onderwijsvorm kan de app niet vergelijken met de gewenste richting.",
+          volgendeStap:
+            "Kies de geclausuleerde onderwijsvorm en controleer opnieuw.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       if (gewensteRichting.onderwijsvorm === geclausuleerdeOnderwijsvorm) {
         return {
+          status: "Niet mogelijk",
           titel: "Niet mogelijk",
-          tekst:
-            "De gewenste richting valt binnen de geclausuleerde onderwijsvorm. Deze overstap lijkt dus niet mogelijk.",
+          reden:
+            "De gewenste richting valt binnen de geclausuleerde onderwijsvorm.",
+          aandachtspunt:
+            "De clausulering lijkt deze overstap uit te sluiten. " + tekstTkr,
+          volgendeStap:
+            "Controleer de exacte formulering en bekijk richtingen buiten deze onderwijsvorm.",
           datumTekst: infoDatum?.tekst,
         };
       }
 
       return {
+        status: "Voorlopig mogelijk",
         titel: "Voorlopig mogelijk",
-        tekst:
-          "De gewenste richting valt niet binnen de geclausuleerde onderwijsvorm. Controleer nog de exacte formulering van het attest.",
+        reden:
+          "De gewenste richting valt niet binnen de geclausuleerde onderwijsvorm.",
+        aandachtspunt:
+          "Controleer nog de exacte formulering van het attest. " + tekstTkr,
+        volgendeStap:
+          "Controleer de officiële voorwaarden en bevestig daarna de overstap.",
         datumTekst: infoDatum?.tekst,
       };
     }
 
     return {
+      status: "Manueel controleren",
       titel: "Manueel controleren",
-      tekst:
-        "Er is een B-attest met clausulering, maar het type clausulering werd nog niet duidelijk gekozen.",
+      reden:
+        "Er is een B-attest met clausulering, maar het type clausulering werd nog niet gekozen.",
+      aandachtspunt:
+        "De app kan pas vergelijken wanneer duidelijk is of de clausulering gaat over richting, domein, finaliteit of onderwijsvorm.",
+      volgendeStap:
+        "Kies het type clausulering en controleer opnieuw.",
       datumTekst: infoDatum?.tekst,
     };
   }
 
   return {
+    status: "Manueel controleren",
     titel: "Manueel controleren",
-    tekst:
+    reden:
       "Deze situatie vraagt een manuele controle door directie of leerlingbegeleiding.",
+    aandachtspunt: tekstTkr,
+    volgendeStap:
+      "Controleer het attest, de regelgeving en de eventuele beslissing van de toelatingsklassenraad.",
     datumTekst: infoDatum?.tekst,
   };
 }
@@ -342,6 +480,7 @@ export default async function CheckerPage({
     geclausuleerdDomein: zoekParams.geclausuleerd_domein,
     geclausuleerdeFinaliteit: zoekParams.geclausuleerde_finaliteit,
     geclausuleerdeOnderwijsvorm: zoekParams.geclausuleerde_onderwijsvorm,
+    tkr: zoekParams.tkr,
   });
 
   return (
@@ -349,9 +488,8 @@ export default async function CheckerPage({
       <h1>Overstapchecker</h1>
 
       <p>
-        Deze testversie vergelijkt richting, domein, finaliteit, onderwijsvorm
-        en overstapmoment. De volledige GO-regelgeving voegen we daarna verder
-        toe.
+        Deze testversie vergelijkt richting, domein, finaliteit, onderwijsvorm,
+        overstapmoment en eventuele beslissing van de toelatingsklassenraad.
       </p>
 
       <form method="GET" style={{ marginTop: "30px" }}>
@@ -556,6 +694,24 @@ export default async function CheckerPage({
           ))}
         </select>
 
+        <h2>6. Toelatingsklassenraad</h2>
+
+        <label style={{ display: "block", marginBottom: "8px" }}>
+          Stand van zaken toelatingsklassenraad
+        </label>
+
+        <select
+          name="tkr"
+          defaultValue={zoekParams.tkr || ""}
+          style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
+        >
+          <option value="">Nog niet aangeduid</option>
+          <option value="niet_nodig">Niet nodig</option>
+          <option value="gunstig">Gunstige beslissing</option>
+          <option value="ongunstig">Ongunstige beslissing</option>
+          <option value="twijfel">Twijfel, nog te bespreken</option>
+        </select>
+
         <button
           type="submit"
           style={{
@@ -581,19 +737,33 @@ export default async function CheckerPage({
         >
           <h2>{resultaat.titel}</h2>
 
+          <p>
+            <strong>Status:</strong> {resultaat.status}
+          </p>
+
           {huidigeRichting && (
             <p>
-              Huidige richting: <strong>{naam(huidigeRichting)}</strong>
+              <strong>Huidige richting:</strong> {naam(huidigeRichting)}
             </p>
           )}
 
           {gewensteRichting && (
             <p>
-              Gewenste richting: <strong>{naam(gewensteRichting)}</strong>
+              <strong>Gewenste richting:</strong> {naam(gewensteRichting)}
             </p>
           )}
 
-          <p>{resultaat.tekst}</p>
+          <p>
+            <strong>Reden:</strong> {resultaat.reden}
+          </p>
+
+          <p>
+            <strong>Aandachtspunt:</strong> {resultaat.aandachtspunt}
+          </p>
+
+          <p>
+            <strong>Volgende stap:</strong> {resultaat.volgendeStap}
+          </p>
 
           {resultaat.datumTekst && (
             <p>
