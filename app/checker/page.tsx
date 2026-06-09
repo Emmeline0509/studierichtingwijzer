@@ -115,7 +115,6 @@ function bepaalResultaat({
 
   if (overstapmoment === "tijdens_schooljaar" && !overstapdatum) {
     return {
-      status: "manueel",
       titel: "Manueel controleren",
       tekst:
         "Er werd gekozen voor een overstap tijdens het schooljaar, maar er is nog geen datum ingevuld.",
@@ -125,7 +124,6 @@ function bepaalResultaat({
 
   if (attest === "A") {
     return {
-      status: "mogelijk",
       titel: "Voorlopig mogelijk",
       tekst:
         "Op basis van een A-attest lijkt deze overstap mogelijk. Controleer nog of er voor deze richting bijkomende toelatingsvoorwaarden gelden.",
@@ -135,7 +133,6 @@ function bepaalResultaat({
 
   if (attest === "C") {
     return {
-      status: "niet_mogelijk",
       titel: "Niet mogelijk",
       tekst:
         "Met een C-attest is een gewone overgang naar het volgende leerjaar niet mogelijk.",
@@ -145,7 +142,6 @@ function bepaalResultaat({
 
   if (attest === "B" && clausulering !== "ja") {
     return {
-      status: "manueel",
       titel: "Manueel controleren",
       tekst:
         "Er is een B-attest ingevoerd, maar geen clausulering. Controleer de exacte formulering van het attest voor je een beslissing neemt.",
@@ -157,7 +153,6 @@ function bepaalResultaat({
     if (clausuleringType === "richting") {
       if (!geclausuleerdeRichting) {
         return {
-          status: "manueel",
           titel: "Manueel controleren",
           tekst:
             "Er is een clausulering op studierichting, maar er werd nog geen geclausuleerde richting gekozen.",
@@ -167,7 +162,6 @@ function bepaalResultaat({
 
       if (geclausuleerdeRichting.id === gewensteRichting.id) {
         return {
-          status: "niet_mogelijk",
           titel: "Niet mogelijk",
           tekst:
             "De gewenste richting is dezelfde als de geclausuleerde studierichting. Deze overstap lijkt dus niet mogelijk.",
@@ -176,7 +170,6 @@ function bepaalResultaat({
       }
 
       return {
-        status: "manueel",
         titel: "Manueel controleren",
         tekst:
           "De geclausuleerde studierichting is niet dezelfde als de gewenste richting. Controleer of de clausulering ruimer geformuleerd is of enkel deze richting uitsluit.",
@@ -187,7 +180,6 @@ function bepaalResultaat({
     if (clausuleringType === "domein") {
       if (!geclausuleerdDomein) {
         return {
-          status: "manueel",
           titel: "Manueel controleren",
           tekst:
             "Er is een clausulering op studiedomein, maar er werd nog geen domein gekozen.",
@@ -197,7 +189,6 @@ function bepaalResultaat({
 
       if (gewensteRichting.domein === geclausuleerdDomein) {
         return {
-          status: "niet_mogelijk",
           titel: "Niet mogelijk",
           tekst:
             "De gewenste richting valt binnen het geclausuleerde studiedomein. Deze overstap lijkt dus niet mogelijk.",
@@ -206,7 +197,6 @@ function bepaalResultaat({
       }
 
       return {
-        status: "mogelijk",
         titel: "Voorlopig mogelijk",
         tekst:
           "De gewenste richting valt niet binnen het geclausuleerde studiedomein. Controleer wel nog de exacte formulering van de clausulering.",
@@ -217,7 +207,6 @@ function bepaalResultaat({
     if (clausuleringType === "finaliteit") {
       if (!geclausuleerdeFinaliteit) {
         return {
-          status: "manueel",
           titel: "Manueel controleren",
           tekst:
             "Er is een clausulering op finaliteit, maar er werd nog geen finaliteit gekozen.",
@@ -227,7 +216,6 @@ function bepaalResultaat({
 
       if (gewensteRichting.finaliteit === geclausuleerdeFinaliteit) {
         return {
-          status: "niet_mogelijk",
           titel: "Niet mogelijk",
           tekst:
             "De gewenste richting valt binnen de geclausuleerde finaliteit. Deze overstap lijkt dus niet mogelijk.",
@@ -236,7 +224,6 @@ function bepaalResultaat({
       }
 
       return {
-        status: "mogelijk",
         titel: "Voorlopig mogelijk",
         tekst:
           "De gewenste richting valt niet binnen de geclausuleerde finaliteit. Controleer nog de exacte formulering van het attest.",
@@ -247,7 +234,6 @@ function bepaalResultaat({
     if (clausuleringType === "onderwijsvorm") {
       if (!geclausuleerdeOnderwijsvorm) {
         return {
-          status: "manueel",
           titel: "Manueel controleren",
           tekst:
             "Er is een clausulering op onderwijsvorm, maar er werd nog geen onderwijsvorm gekozen.",
@@ -257,7 +243,6 @@ function bepaalResultaat({
 
       if (gewensteRichting.onderwijsvorm === geclausuleerdeOnderwijsvorm) {
         return {
-          status: "niet_mogelijk",
           titel: "Niet mogelijk",
           tekst:
             "De gewenste richting valt binnen de geclausuleerde onderwijsvorm. Deze overstap lijkt dus niet mogelijk.",
@@ -266,7 +251,6 @@ function bepaalResultaat({
       }
 
       return {
-        status: "mogelijk",
         titel: "Voorlopig mogelijk",
         tekst:
           "De gewenste richting valt niet binnen de geclausuleerde onderwijsvorm. Controleer nog de exacte formulering van het attest.",
@@ -275,7 +259,6 @@ function bepaalResultaat({
     }
 
     return {
-      status: "manueel",
       titel: "Manueel controleren",
       tekst:
         "Er is een B-attest met clausulering, maar het type clausulering werd nog niet duidelijk gekozen.",
@@ -284,7 +267,6 @@ function bepaalResultaat({
   }
 
   return {
-    status: "manueel",
     titel: "Manueel controleren",
     tekst:
       "Deze situatie vraagt een manuele controle door directie of leerlingbegeleiding.",
@@ -297,7 +279,8 @@ export default async function CheckerPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const zoekParams = await searchParams;
+
   const { data: programs, error } = await supabase
     .from("study_programs")
     .select("*")
@@ -318,15 +301,15 @@ export default async function CheckerPage({
   const alleProgrammas = (programs || []) as Program[];
 
   const huidigeRichting = alleProgrammas.find(
-    (program) => program.id === params.huidige_richting
+    (program) => program.id === zoekParams.huidige_richting
   );
 
   const gewensteRichting = alleProgrammas.find(
-    (program) => program.id === params..gewenste_richting
+    (program) => program.id === zoekParams.gewenste_richting
   );
 
   const geclausuleerdeRichting = alleProgrammas.find(
-    (program) => program.id === geclausuleerde_richting
+    (program) => program.id === zoekParams.geclausuleerde_richting
   );
 
   const domeinen = Array.from(
@@ -344,21 +327,21 @@ export default async function CheckerPage({
   ).sort();
 
   const infoDatum = datumInfo(
-    params.overstapmoment,
-    params.overstapdatum
+    zoekParams.overstapmoment,
+    zoekParams.overstapdatum
   );
 
   const resultaat = bepaalResultaat({
-    overstapmoment: params..overstapmoment,
-    overstapdatum: params..overstapdatum,
-    attest: attest,
-    clausulering: params..clausulering,
-    clausuleringType: params..clausulering_type,
+    overstapmoment: zoekParams.overstapmoment,
+    overstapdatum: zoekParams.overstapdatum,
+    attest: zoekParams.attest,
+    clausulering: zoekParams.clausulering,
+    clausuleringType: zoekParams.clausulering_type,
     gewensteRichting,
     geclausuleerdeRichting,
-    geclausuleerdDomein: params.geclausuleerd_domein,
-    geclausuleerdeFinaliteit: params.geclausuleerde_finaliteit,
-    geclausuleerdeOnderwijsvorm: params.geclausuleerde_onderwijsvorm,
+    geclausuleerdDomein: zoekParams.geclausuleerd_domein,
+    geclausuleerdeFinaliteit: zoekParams.geclausuleerde_finaliteit,
+    geclausuleerdeOnderwijsvorm: zoekParams.geclausuleerde_onderwijsvorm,
   });
 
   return (
@@ -366,9 +349,9 @@ export default async function CheckerPage({
       <h1>Overstapchecker</h1>
 
       <p>
-        Deze testversie vergelijkt richting, domein, finaliteit,
-        onderwijsvorm en overstapmoment. De volledige GO-regelgeving voegen we
-        daarna verder toe.
+        Deze testversie vergelijkt richting, domein, finaliteit, onderwijsvorm
+        en overstapmoment. De volledige GO-regelgeving voegen we daarna verder
+        toe.
       </p>
 
       <form method="GET" style={{ marginTop: "30px" }}>
@@ -380,12 +363,14 @@ export default async function CheckerPage({
 
         <select
           name="overstapmoment"
-          defaultValue={overstapmoment || ""}
+          defaultValue={zoekParams.overstapmoment || ""}
           required
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Kies overstapmoment</option>
-          <option value="volgend_schooljaar">Bij de start van volgend schooljaar</option>
+          <option value="volgend_schooljaar">
+            Bij de start van volgend schooljaar
+          </option>
           <option value="tijdens_schooljaar">Tijdens het schooljaar</option>
         </select>
 
@@ -396,7 +381,7 @@ export default async function CheckerPage({
         <input
           type="date"
           name="overstapdatum"
-          defaultValue={overstapdatum || ""}
+          defaultValue={zoekParams.overstapdatum || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         />
 
@@ -422,7 +407,7 @@ export default async function CheckerPage({
 
         <select
           name="huidige_richting"
-          defaultValue={huidige_richting || ""}
+          defaultValue={zoekParams.huidige_richting || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Kies huidige richting</option>
@@ -441,7 +426,7 @@ export default async function CheckerPage({
 
         <select
           name="gewenste_richting"
-          defaultValue={gewenste_richting || ""}
+          defaultValue={zoekParams.gewenste_richting || ""}
           required
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
@@ -461,7 +446,7 @@ export default async function CheckerPage({
 
         <select
           name="attest"
-          defaultValue={attest || ""}
+          defaultValue={zoekParams.attest || ""}
           required
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
@@ -479,7 +464,7 @@ export default async function CheckerPage({
 
         <select
           name="clausulering"
-          defaultValue={clausulering || ""}
+          defaultValue={zoekParams.clausulering || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Kies</option>
@@ -493,7 +478,7 @@ export default async function CheckerPage({
 
         <select
           name="clausulering_type"
-          defaultValue={clausulering_type || ""}
+          defaultValue={zoekParams.clausulering_type || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Niet van toepassing of nog niet gekozen</option>
@@ -509,7 +494,7 @@ export default async function CheckerPage({
 
         <select
           name="geclausuleerde_richting"
-          defaultValue={geclausuleerde_richting || ""}
+          defaultValue={zoekParams.geclausuleerde_richting || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Niet van toepassing of nog niet gekozen</option>
@@ -526,7 +511,7 @@ export default async function CheckerPage({
 
         <select
           name="geclausuleerd_domein"
-          defaultValue={geclausuleerd_domein || ""}
+          defaultValue={zoekParams.geclausuleerd_domein || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Niet van toepassing of nog niet gekozen</option>
@@ -543,7 +528,7 @@ export default async function CheckerPage({
 
         <select
           name="geclausuleerde_finaliteit"
-          defaultValue={geclausuleerde_finaliteit || ""}
+          defaultValue={zoekParams.geclausuleerde_finaliteit || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Niet van toepassing of nog niet gekozen</option>
@@ -560,7 +545,7 @@ export default async function CheckerPage({
 
         <select
           name="geclausuleerde_onderwijsvorm"
-          defaultValue={geclausuleerde_onderwijsvorm || ""}
+          defaultValue={zoekParams.geclausuleerde_onderwijsvorm || ""}
           style={{ width: "100%", padding: "10px", marginBottom: "18px" }}
         >
           <option value="">Niet van toepassing of nog niet gekozen</option>
